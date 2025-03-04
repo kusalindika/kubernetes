@@ -1,0 +1,42 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: prometheus-grafana-ingress
+  namespace: monitoring
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-production
+    #nginx.ingress.kubernetes.io/app-root: /login
+    # cert-manager.io/acme-challenge-type: http01
+    nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+    #nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    acme.cert-manager.io/http01-edit-in-place: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - argocd-prometheus.ottu.net
+    secretName: argocd-prometheus-tls
+  - hosts:
+    - argocd-grafana.ottu.net
+    secretName: argocd-grafana-tls
+  rules:
+  - host: argocd-prometheus.ottu.net
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: prometheus-server
+            port:
+              name: http
+  - host: argocd-grafana.ottu.net
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: grafana
+            port:
+              name: service

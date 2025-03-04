@@ -1,0 +1,15 @@
+# https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd#ha-mode-without-autoscaling
+redis-ha:
+  enabled: true
+
+controller:
+  replicas: 1
+
+server:
+  replicas: 2
+
+repoServer:
+  replicas: 2
+
+applicationSet:
+  replicas: 2
