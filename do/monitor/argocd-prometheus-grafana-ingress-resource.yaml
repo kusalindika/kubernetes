@@ -10,6 +10,9 @@ metadata:
     nginx.ingress.kubernetes.io/ssl-passthrough: "true"
     #nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
     acme.cert-manager.io/http01-edit-in-place: "true"
+    #nginx.ingress.kubernetes.io/use-regex: "true"
+    #ingress.kubernetes.io/rewrite-target: "/"
+    #nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   ingressClassName: nginx
   tls:
@@ -19,6 +22,9 @@ spec:
   - hosts:
     - argocd-grafana.ottu.net
     secretName: argocd-grafana-tls
+  - hosts:
+    - argocd-alertmanager.ottu.net
+    secretName: argocd-alertmanager-tls
   rules:
   - host: argocd-prometheus.ottu.net
     http:
@@ -40,3 +46,15 @@ spec:
             name: grafana
             port:
               name: service
+  - host: argocd-alertmanager.ottu.net
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: prometheus-alertmanager
+            port:
+              name: http
+  
+      
