@@ -17,12 +17,25 @@ spec:
     #   ref: prometheus
     - repoURL: https://prometheus-community.github.io/helm-charts/
       chart: prometheus
-      targetRevision: 19.7.2
+      targetRevision: 27.5.1
       helm:
         values: |
             server:
               service:
                 type: ClusterIP
+            serverFiles:
+              alerting_rules.yml:
+                groups:
+                  - name: Instances
+                    rules:
+                      - alert: InstanceDown
+                        expr: up == 0
+                        for: 5m
+                        labels:
+                          severity: page
+                        annotations:
+                          description: '{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 5 minutes.'
+                          summary: 'Instance {{ $labels.instance }} down'
   syncPolicy:
     automated:
       prune: true
