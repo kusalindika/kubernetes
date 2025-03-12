@@ -8,17 +8,13 @@ variable "env" {
 variable "vpc_cidr" {
 }
 
-variable "assign_generated_ipv6_cidr_block" {
-  default = "false"
-}
-
 variable "project_name" {
   default = "personal"
 }
 
 resource "aws_vpc" "this" {
   cidr_block                       = var.vpc_cidr
-  assign_generated_ipv6_cidr_block = var.assign_generated_ipv6_cidr_block
+  assign_generated_ipv6_cidr_block = false
   enable_dns_support               = true
   enable_dns_hostnames             = true
 
