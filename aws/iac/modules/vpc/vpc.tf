@@ -1,17 +1,3 @@
-variable "name" {
-  default = "vpc"
-}
-
-variable "env" {
-}
-
-variable "vpc_cidr" {
-}
-
-variable "project_name" {
-  default = "personal"
-}
-
 resource "aws_vpc" "this" {
   cidr_block                       = var.vpc_cidr
   assign_generated_ipv6_cidr_block = false
@@ -19,11 +5,11 @@ resource "aws_vpc" "this" {
   enable_dns_hostnames             = true
 
   tags = {
-    Name        = "${var.env}-${var.project_name}-${var.name}"
+    Name        = "${var.env}-${var.project_name}-vpc"
     Environment = var.env
   }
 }
 
-output "id" {
+output "vpc_id" {
   value = aws_vpc.this.id
 }
