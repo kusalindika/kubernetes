@@ -7,8 +7,8 @@ include "root" {
 }
 
 include "env" {
-  path   = find_in_parent_folders("env.hcl")
-  expose = true
+  path           = find_in_parent_folders("env.hcl")
+  expose         = true
   merge_strategy = "no_merge"
 }
 
