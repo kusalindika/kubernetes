@@ -13,3 +13,7 @@ resource "helm_release" "external_nginx" {
 
   depends_on = [ var.aws_load_balancer_controller ]
 }
+
+output "external_nginx_id" {
+  value = helm_release.external_nginx.*.id  
+}
