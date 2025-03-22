@@ -1,0 +1,51 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-network-loadbalancer
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: echoserver
+  namespace: test-network-loadbalancer
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: echoserver
+  template:
+    metadata:
+      labels:
+        app: echoserver
+    spec:
+      containers:
+      - name: echoserver
+        image: k8s.gcr.io/e2e-test-images/echoserver:2.5
+        resources:
+          limits:
+            memory: "64Mi"
+            cpu: "256m"
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: echoserver
+  namespace: test-network-loadbalancer
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+    service.beta.kubernetes.io/aws-load-balancer-type: external
+    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip
+    service.beta.kubernetes.io/aws-load-balancer-ip-address-type: ipv4
+    service.beta.kubernetes.io/aws-load-balancer-attributes: |
+      load_balancing.cross_zone.enabled=false
+spec:
+  selector:
+    app: echoserver
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8080
+  type: LoadBalancer
