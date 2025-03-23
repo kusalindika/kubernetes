@@ -1,35 +1,35 @@
 variable "env" {
   description = "The environment name"
-  type = string
+  type        = string
 }
 
 variable "eks_name" {
   description = "The name of the EKS cluster"
-  type = string 
+  type        = string
 }
 
 variable "eks_version" {
   description = "The version of the EKS cluster"
-  type = string
+  type        = string
 }
 
 variable "subnet_ids" {
   description = "The subnet ids of private"
-  type = list(string)
-  
+  type        = list(string)
+
 }
 
 variable "node_groups" {
   description = "EKS node groups"
-  type = map(any)
-  
+  type        = map(any)
+
 }
 
 variable "enable_irsa" {
   description = "Enable IRSA"
-  type = bool
-  default = true
-  
+  type        = bool
+  default     = true
+
 }
 
 variable "node_iam_policies" {

@@ -10,15 +10,15 @@ variable "aws_load_balancer_controller_helm_version" {
 
 variable "eks_name" {
   description = "The name of the EKS cluster"
-  type = string 
+  type        = string
 }
 
 variable "aws_eks_node_group" {
   description = "The EKS node group"
-  type = any  
+  type        = any
 }
 
 variable "vpcId" {
   description = "The VPC ID"
-  type = string
+  type        = string
 }

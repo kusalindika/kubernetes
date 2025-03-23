@@ -9,7 +9,7 @@ variable "public_subnet_tags" {
 }
 
 resource "aws_subnet" "private" {
-  count = length(var.private_cidrs)
+  count                   = length(var.private_cidrs)
   vpc_id                  = aws_vpc.this.id
   cidr_block              = var.private_cidrs[count.index]
   availability_zone       = var.azs[count.index]
@@ -22,12 +22,12 @@ resource "aws_subnet" "private" {
   tags = merge({
     Name        = "${var.env}-private-${var.azs[count.index]}"
     Environment = var.env
-    Tf          = 1}
+    Tf = 1 }
   , var.private_subnet_tags)
 }
 
 resource "aws_subnet" "public" {
-  count = length(var.public_cidrs)
+  count                   = length(var.public_cidrs)
   vpc_id                  = aws_vpc.this.id
   cidr_block              = var.public_cidrs[count.index]
   availability_zone       = var.azs[count.index]
@@ -42,7 +42,7 @@ resource "aws_subnet" "public" {
     Environment = var.env
     Tf          = 1
   }, var.public_subnet_tags)
-  
+
 }
 
 output "private_subnet_ids" {

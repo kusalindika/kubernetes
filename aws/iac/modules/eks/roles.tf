@@ -40,7 +40,7 @@ resource "aws_iam_role" "nodes" {
 }
 
 resource "aws_iam_role_policy_attachment" "nodes" {
-    for_each = var.node_iam_policies
+  for_each   = var.node_iam_policies
   policy_arn = each.value
   role       = aws_iam_role.nodes.name
 }

@@ -7,7 +7,7 @@ resource "aws_eks_cluster" "this" {
     # Enable the connection if you have vpn or direct connect
     endpoint_private_access = false
     # Enable the connection over the public internet
-    endpoint_public_access  = true
+    endpoint_public_access = true
 
     # Subnet ids of private
     subnet_ids = var.subnet_ids

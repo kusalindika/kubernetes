@@ -6,10 +6,16 @@ include "root" {
   path = find_in_parent_folders()
 }
 
+include "env" {
+  path           = find_in_parent_folders("env.hcl")
+  expose         = true
+  merge_strategy = "no_merge"
+}
+
 inputs = {
   vpc_cidr     = "10.16.0.0/16"
-  env          = "staging"
-  project_name = "personal"
+  env          = include.env.locals.env
+  project_name = include.env.locals.project_name
   private_cidrs = [
     "10.16.4.0/24", "10.16.8.0/24", "10.16.12.0/24"
   ]

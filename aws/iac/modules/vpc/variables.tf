@@ -18,5 +18,5 @@ variable "public_cidrs" {
 
 variable "azs" {
   description = "A list of availability zones"
-  type = list(string)
+  type        = list(string)
 }
