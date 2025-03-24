@@ -14,6 +14,12 @@ data "aws_iam_policy_document" "ebs_csi_driver" {
   }
 }
 
+resource "aws_eks_addon" "pod_identity" {
+  cluster_name  = var.eks_name
+  addon_name    = "eks-pod-identity-agent"
+  addon_version = "v1.3.5-eksbuild.2"
+}
+
 resource "aws_iam_role" "ebs_csi_driver" {
   name               = "${var.eks_name}-ebs-csi-driver"
   assume_role_policy = data.aws_iam_policy_document.ebs_csi_driver.json
