@@ -23,6 +23,11 @@ spec:
       - name: echoserver
         image: k8s.gcr.io/e2e-test-images/echoserver:2.5
         resources:
+          requests:
+            memory: "64Mi"
+            cpu: "256m"
+          # Note: The resource limits are set to the same values as requests.
+          # This is done to ensure that the container does not exceed the requested resources.
           limits:
             memory: "64Mi"
             cpu: "256m"
