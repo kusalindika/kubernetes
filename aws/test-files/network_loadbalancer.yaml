@@ -23,6 +23,9 @@ spec:
       - name: echoserver
         image: k8s.gcr.io/e2e-test-images/echoserver:2.5
         resources:
+          requests:
+            memory: "64Mi"
+            cpu: "256m"
           limits:
             memory: "64Mi"
             cpu: "256m"
