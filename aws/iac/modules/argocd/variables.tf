@@ -1,3 +1,8 @@
+variable "eks_name" {
+  description = "The name of the EKS cluster"
+  type        = string
+
+}
 variable "enable_argocd" {
   description = "Enable ArgoCD"
   type        = bool

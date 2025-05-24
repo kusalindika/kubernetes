@@ -1,19 +1,18 @@
 global:
-  domain: argocd.example.com
-
-configs:
-  params:
-    server.insecure: true
+  domain: argocd.ottu.net
 
 server:
   ingress:
+    path: /
+    pathType: Prefix
     enabled: true
     ingressClassName: external-nginx
     annotations:
       nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
       nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
-    extraTls:
+      cert-manager.io/cluster-issuer: letsencrypt-http01
+    tls:
       - hosts:
-        - argocd.example.com
-        # Based on the ingress controller used secret might be optional
-        secretName: wildcard-tls
+        - argocd.ottu.net
+        # Based on the ingress controller used secret might be optional, it comes with the ingress helm chart
+        # secretName: argocd-server-tls
