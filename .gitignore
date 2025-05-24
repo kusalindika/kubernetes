@@ -6,3 +6,7 @@
 *.terraform.lock.hcl
 .terragrunt-cache
 .terragrunt-debug.tfvars
+.vscode
+*.tfplan
+*.tfplan.*
+*.tfvars.json

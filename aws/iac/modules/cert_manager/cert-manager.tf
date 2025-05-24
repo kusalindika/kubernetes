@@ -15,3 +15,10 @@ resource "helm_release" "cert_manager" {
 
   depends_on = [var.nginx_ingress_controller]
 }
+
+# ClusterIssuer using HTTP01 challenge
+resource "kubernetes_manifest" "cluster_issuer" {
+  manifest = yamldecode(file("${path.module}/cluster_issuer.yaml"))
+
+  depends_on = [helm_release.cert_manager]
+}
