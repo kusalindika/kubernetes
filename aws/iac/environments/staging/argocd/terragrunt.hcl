@@ -11,6 +11,7 @@ inputs = {
   argocd_helm_version         = "8.0.9"
   argocd_admin_password       = "admin"
   eks_name                    = dependency.eks.outputs.eks_name
+  cert_manager                = dependency.cert_manager.outputs.cert_manager_id
   argocd_helm_chart_namespace = "argocd"
 }
 
@@ -19,6 +20,14 @@ dependency "eks" {
 
   mock_outputs = {
     eks_name = "demo"
+  }
+}
+
+dependency "cert_manager" {
+  config_path = find_in_parent_folders("cert_manager/terragrunt.hcl")
+
+  mock_outputs = {
+    cert_manager_id = "cert-manager"
   }
 }
 
