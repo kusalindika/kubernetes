@@ -24,3 +24,11 @@ dependency "eks" {
     eks_name = "demo"
   }
 }
+
+dependency "kubernetes_addons" {
+  config_path = find_in_parent_folders("kubernetes_addons/terragrunt.hcl")
+
+  mock_outputs = {
+    cluster_autoscaler_id = "cluster-autoscaler"
+  }
+}
