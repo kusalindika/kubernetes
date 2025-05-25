@@ -1,5 +1,6 @@
 ---
 controller:
+  ingressClass: external-nginx
   ingressClassResource:
     name: external-nginx
   service:

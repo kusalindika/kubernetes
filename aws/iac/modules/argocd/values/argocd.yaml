@@ -9,7 +9,8 @@ server:
     ingressClassName: external-nginx
     annotations:
       nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
-      nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+      nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+      nginx.ingress.kubernetes.io/proxy-body-size: 20m
       cert-manager.io/cluster-issuer: letsencrypt-http01
     tls:
       - hosts:
