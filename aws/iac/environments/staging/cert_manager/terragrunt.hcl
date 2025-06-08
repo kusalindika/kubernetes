@@ -3,7 +3,7 @@ terraform {
 }
 
 inputs = {
-  cert_manager_helm_version = "1.17.1"
+  cert_manager_helm_version = "1.17.2"
   enable_cert_manager       = true
   nginx_ingress_controller  = dependency.ingress_controller.outputs.external_nginx_id
   eks_name                  = dependency.eks.outputs.eks_name
