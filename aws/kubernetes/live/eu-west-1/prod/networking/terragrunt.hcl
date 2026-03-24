@@ -19,4 +19,5 @@ inputs = {
   public_subnet_cidrs  = local.env_cfg.locals.public_subnet_cidrs
   private_subnet_cidrs = local.env_cfg.locals.private_subnet_cidrs
   enable_vpc_endpoints = true
+  cluster_name         = "k8s-${local.env_cfg.locals.environment}-eks"
 }

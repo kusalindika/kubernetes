@@ -46,3 +46,9 @@ variable "enable_vpc_endpoints" {
   type        = bool
   default     = true
 }
+
+variable "cluster_name" {
+  description = "EKS cluster name for subnet discovery tags. Leave empty to skip tagging."
+  type        = string
+  default     = ""
+}

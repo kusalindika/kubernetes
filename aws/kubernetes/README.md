@@ -1,9 +1,10 @@
-# EKS/Karpenter Phase 0-1 IaC
+# EKS/Karpenter Phase 0-2 IaC
 
-This directory contains a fresh Terraform + Terragrunt implementation for:
+This directory contains a Terraform + Terragrunt implementation for:
 
 - Phase 0: minimal Terraform state bootstrap (S3 only)
 - Phase 1: per-environment networking (VPC + shared single NAT Gateway)
+- Phase 2: EKS cluster baseline (production-ready, public endpoint with restricted CIDRs)
 
 No code is reused from other repository directories.
 
@@ -26,6 +27,20 @@ No code is reused from other repository directories.
   - Single NAT Gateway in one public subnet
   - Private subnet default route in all AZs via the same NAT Gateway
   - Baseline VPC endpoints (`s3`, `ecr.api`, `ecr.dkr`, `sts`, `logs`, `ec2`)
+  - EKS subnet discovery tags (`kubernetes.io/role/elb`, `kubernetes.io/role/internal-elb`, `kubernetes.io/cluster/<name>`)
+- EKS module:
+  - EKS cluster (Kubernetes 1.35) with public + private endpoint access
+  - KMS CMK for secrets encryption (with key rotation)
+  - OIDC provider for IRSA (workload identity)
+  - Access entries (API mode) for cluster admin — no aws-auth ConfigMap
+  - System managed node group (tainted `CriticalAddonsOnly` for system pods)
+  - Managed add-ons: VPC CNI, CoreDNS, kube-proxy, EBS CSI driver
+  - Control-plane logging (api, authenticator for dev/stage; all types for prod)
+  - SSM agent on nodes for Session Manager access
+- Cluster stacks for:
+  - `dev` (t3.medium, desired=2, min=1, max=3)
+  - `stage` (t3.medium, desired=2, min=1, max=3)
+  - `prod` (t3.medium, desired=2, min=2, max=4, all log types enabled)
 
 ## Runtime account discovery
 
@@ -38,7 +53,7 @@ This implementation avoids hardcoding account IDs by resolving identity at runti
 
 - Terraform `>= 1.8.0, < 2.0.0`
 - Terragrunt (current stable)
-- AWS credentials/profile with permissions for S3, EC2/VPC, and VPC endpoints
+- AWS credentials/profile with permissions for S3, EC2/VPC, VPC endpoints, EKS, IAM, KMS
 - Region: `eu-west-1`
 
 ## Apply order
@@ -72,6 +87,27 @@ cd aws/kubernetes/live/eu-west-1
 terragrunt run-all plan --terragrunt-include-dir "*/networking"
 ```
 
+4. Plan/apply EKS cluster per environment (requires networking to be applied first):
+
+```bash
+cd aws/kubernetes/live/eu-west-1/dev/cluster
+terragrunt init
+terragrunt plan
+terragrunt apply
+```
+
+Repeat for:
+
+- `aws/kubernetes/live/eu-west-1/stage/cluster`
+- `aws/kubernetes/live/eu-west-1/prod/cluster`
+
+5. Run full stack plan across an environment:
+
+```bash
+cd aws/kubernetes/live/eu-west-1/dev
+terragrunt run-all plan
+```
+
 ## Key outputs (networking)
 
 - `vpc_id`
@@ -83,12 +119,29 @@ terragrunt run-all plan --terragrunt-include-dir "*/networking"
 - `nat_gateway_id`
 - `nat_gateway_public_ip`
 
-These outputs are intended to be consumed by later EKS phases.
+## Key outputs (cluster)
 
-## Design tradeoff: single NAT Gateway
+- `cluster_name`
+- `cluster_endpoint`
+- `cluster_certificate_authority_data`
+- `cluster_version`
+- `oidc_provider_arn` / `oidc_provider_url`
+- `cluster_role_arn` / `node_role_arn`
+- `kms_key_arn`
+- `cluster_security_group_id` / `cluster_primary_security_group_id`
 
-Using one NAT Gateway for all AZs reduces cost but introduces a single point of failure for private egress.
+These outputs are consumed by later phases (Karpenter, add-ons).
 
-Recommended production follow-up options:
+## Design tradeoffs
 
-- move to managed NAT Gateways per AZ for higher availability
+### Single NAT Gateway
+
+Using one NAT Gateway for all AZs reduces cost but introduces a single point of failure for private egress. Recommended production follow-up: NAT Gateways per AZ.
+
+### Public cluster endpoint
+
+The cluster API endpoint is public with restricted CIDRs (`public_access_cidrs`). Currently defaults to `0.0.0.0/0` — replace with your specific IPs/CIDRs before production use. Private endpoint access is also enabled, so in-VPC traffic stays internal.
+
+### System node group taint
+
+The system node group has a `CriticalAddonsOnly=true:NoSchedule` taint. Only system pods with matching tolerations will be scheduled there. Workload pods require Karpenter (Phase 3) or additional node groups.
