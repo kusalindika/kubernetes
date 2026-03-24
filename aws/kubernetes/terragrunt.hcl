@@ -1,8 +1,8 @@
 locals {
   aws_region     = "eu-west-1"
-  project_name   = "k8s-phase01"
+  project_name   = "k8s-project"
   aws_account_id = get_aws_account_id()
-  state_bucket   = "tfstate-${local.project_name}-${local.aws_account_id}-${local.aws_region}"
+  state_bucket   = "bootstrap-${local.aws_account_id}-tfstate"
   default_tags = {
     managedBy = "terragrunt"
     project   = local.project_name
@@ -27,16 +27,6 @@ generate "providers" {
   path      = "providers.generated.tf"
   if_exists = "overwrite_terragrunt"
   contents  = <<-EOF
-    terraform {
-      required_version = ">= 1.8.0, < 2.0.0"
-      required_providers {
-        aws = {
-          source  = "hashicorp/aws"
-          version = "~> 5.0"
-        }
-      }
-    }
-
     provider "aws" {
       region = "${local.aws_region}"
       default_tags {

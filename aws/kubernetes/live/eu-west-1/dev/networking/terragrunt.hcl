@@ -11,7 +11,7 @@ terraform {
 }
 
 inputs = {
-  name_prefix          = "k8s-${local.env_cfg.locals.environment}"
+  name_prefix          = "${local.env_cfg.locals.environment}"
   environment          = local.env_cfg.locals.environment
   region               = "eu-west-1"
   vpc_cidr             = local.env_cfg.locals.vpc_cidr

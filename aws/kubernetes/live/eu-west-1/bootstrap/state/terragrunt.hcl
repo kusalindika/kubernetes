@@ -22,7 +22,7 @@ generate "providers_bootstrap" {
       default_tags {
         tags = {
           managedBy = "terragrunt"
-          project   = "k8s-phase01"
+          project   = "k8s-project"
           stack     = "bootstrap"
         }
       }

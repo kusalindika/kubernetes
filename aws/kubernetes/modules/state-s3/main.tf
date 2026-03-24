@@ -4,7 +4,7 @@ locals {
   derived_bucket_name = lower(
     coalesce(
       var.bucket_name_override,
-      "${var.environment}-tfstate"
+      "bootstrap-${data.aws_caller_identity.current.account_id}-tfstate"
     )
   )
 }
