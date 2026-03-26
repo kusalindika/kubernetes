@@ -26,8 +26,9 @@ inputs = {
   cluster_version    = "1.35"
   vpc_id             = dependency.networking.outputs.vpc_id
   private_subnet_ids = values(dependency.networking.outputs.private_subnet_ids)
-  public_access_cidrs = ["0.0.0.0/0"]
-  cluster_log_types  = ["api", "authenticator"]
+  public_access_cidrs       = ["0.0.0.0/0"]
+  enable_secrets_encryption = false
+  cluster_log_types         = ["api", "authenticator"]
 
   admin_principal_arns       = []
   system_node_instance_types = ["t3.medium"]

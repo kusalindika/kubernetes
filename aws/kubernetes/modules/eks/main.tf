@@ -12,6 +12,8 @@ locals {
 # ---------- KMS key for EKS secrets encryption ----------
 
 resource "aws_kms_key" "eks" {
+  count = var.enable_secrets_encryption ? 1 : 0
+
   description             = "EKS secrets encryption key for ${local.cluster_name}"
   deletion_window_in_days = 7
   enable_key_rotation     = true
@@ -22,8 +24,10 @@ resource "aws_kms_key" "eks" {
 }
 
 resource "aws_kms_alias" "eks" {
+  count = var.enable_secrets_encryption ? 1 : 0
+
   name          = "alias/${local.cluster_name}"
-  target_key_id = aws_kms_key.eks.key_id
+  target_key_id = aws_kms_key.eks[0].key_id
 }
 
 # ---------- Cluster IAM role ----------
@@ -100,11 +104,14 @@ resource "aws_eks_cluster" "this" {
     bootstrap_cluster_creator_admin_permissions  = true
   }
 
-  encryption_config {
-    provider {
-      key_arn = aws_kms_key.eks.arn
+  dynamic "encryption_config" {
+    for_each = var.enable_secrets_encryption ? [1] : []
+    content {
+      provider {
+        key_arn = aws_kms_key.eks[0].arn
+      }
+      resources = ["secrets"]
     }
-    resources = ["secrets"]
   }
 
   enabled_cluster_log_types = var.cluster_log_types
@@ -117,6 +124,14 @@ resource "aws_eks_cluster" "this" {
     aws_iam_role_policy_attachment.cluster_AmazonEKSClusterPolicy,
     aws_iam_role_policy_attachment.cluster_AmazonEKSVPCResourceController,
   ]
+}
+
+# ---------- Karpenter discovery tag on primary SG ----------
+
+resource "aws_ec2_tag" "cluster_primary_sg_karpenter" {
+  resource_id = aws_eks_cluster.this.vpc_config[0].cluster_security_group_id
+  key         = "karpenter.sh/discovery"
+  value       = local.cluster_name
 }
 
 # ---------- OIDC provider for IRSA ----------
@@ -249,6 +264,50 @@ resource "aws_eks_node_group" "system" {
   ]
 }
 
+# ---------- EBS CSI driver IRSA role ----------
+
+locals {
+  oidc_issuer = replace(aws_eks_cluster.this.identity[0].oidc[0].issuer, "https://", "")
+}
+
+data "aws_iam_policy_document" "ebs_csi_assume_role" {
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+
+    principals {
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.eks.arn]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${local.oidc_issuer}:sub"
+      values   = ["system:serviceaccount:kube-system:ebs-csi-controller-sa"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${local.oidc_issuer}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "ebs_csi" {
+  name               = "${local.cluster_name}-ebs-csi-role"
+  assume_role_policy = data.aws_iam_policy_document.ebs_csi_assume_role.json
+
+  tags = merge(local.common_tags, {
+    Name = "${local.cluster_name}-ebs-csi-role"
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ebs_csi_AmazonEBSCSIDriverPolicy" {
+  role       = aws_iam_role.ebs_csi.name
+  policy_arn = "arn:${data.aws_partition.current.partition}:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
+}
+
 # ---------- EKS managed add-ons ----------
 
 resource "aws_eks_addon" "vpc_cni" {
@@ -283,10 +342,14 @@ resource "aws_eks_addon" "kube_proxy" {
 resource "aws_eks_addon" "ebs_csi" {
   cluster_name                = aws_eks_cluster.this.name
   addon_name                  = "aws-ebs-csi-driver"
+  service_account_role_arn    = aws_iam_role.ebs_csi.arn
   resolve_conflicts_on_create = "OVERWRITE"
   resolve_conflicts_on_update = "OVERWRITE"
 
   tags = local.common_tags
 
-  depends_on = [aws_eks_node_group.system]
+  depends_on = [
+    aws_eks_node_group.system,
+    aws_iam_role_policy_attachment.ebs_csi_AmazonEBSCSIDriverPolicy,
+  ]
 }

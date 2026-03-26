@@ -30,6 +30,12 @@ variable "public_access_cidrs" {
   default     = ["0.0.0.0/0"]
 }
 
+variable "enable_secrets_encryption" {
+  description = "Whether to create a KMS CMK and enable EKS secrets encryption."
+  type        = bool
+  default     = true
+}
+
 variable "cluster_log_types" {
   description = "EKS control-plane log types to enable."
   type        = list(string)

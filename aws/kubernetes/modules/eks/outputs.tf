@@ -59,8 +59,13 @@ output "node_role_name" {
 }
 
 output "kms_key_arn" {
-  description = "ARN of the KMS key used for EKS secrets encryption."
-  value       = aws_kms_key.eks.arn
+  description = "ARN of the KMS key used for EKS secrets encryption. Empty when encryption is disabled."
+  value       = var.enable_secrets_encryption ? aws_kms_key.eks[0].arn : ""
+}
+
+output "ebs_csi_role_arn" {
+  description = "ARN of the IRSA role used by the EBS CSI driver."
+  value       = aws_iam_role.ebs_csi.arn
 }
 
 output "system_node_group_name" {

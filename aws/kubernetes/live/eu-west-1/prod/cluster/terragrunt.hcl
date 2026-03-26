@@ -21,13 +21,14 @@ terraform {
 }
 
 inputs = {
-  name_prefix        = "k8s-${local.env_cfg.locals.environment}"
+  name_prefix        = local.env_cfg.locals.environment
   environment        = local.env_cfg.locals.environment
   cluster_version    = "1.35"
   vpc_id             = dependency.networking.outputs.vpc_id
   private_subnet_ids = values(dependency.networking.outputs.private_subnet_ids)
-  public_access_cidrs = ["0.0.0.0/0"]
-  cluster_log_types  = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
+  public_access_cidrs       = ["0.0.0.0/0"]
+  enable_secrets_encryption = false
+  cluster_log_types         = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
 
   admin_principal_arns       = []
   system_node_instance_types = ["t3.medium"]
