@@ -1,4 +1,4 @@
-# EKS/Karpenter Phase 0-3 IaC
+# EKS/Karpenter Phase 0-4 IaC
 
 This directory contains a Terraform + Terragrunt implementation for:
 
@@ -6,8 +6,19 @@ This directory contains a Terraform + Terragrunt implementation for:
 - Phase 1: per-environment networking (VPC + shared single NAT Gateway)
 - Phase 2: EKS cluster baseline (production-ready, public endpoint with restricted CIDRs)
 - Phase 3: Karpenter autoscaler (IRSA, SQS interruption handling, NodePools)
+- Phase 3.5: Istio service mesh (Istiod, ingress/egress gateways, mTLS)
+- Phase 4: AWS Load Balancer Controller + ALB ingress for Istio Gateway
+- Test App: two-service mesh application exercising all platform features
 
 No code is reused from other repository directories.
+
+## Architecture
+
+```
+Client -> ALB (L7, HTTPS/TLS termination) -> Istio Ingress Gateway pods -> Envoy sidecar -> Service
+```
+
+The AWS Load Balancer Controller watches `Ingress` resources with `ingressClassName: alb` and provisions ALBs. The Istio Ingress Gateway runs as a ClusterIP service (no NLB), and a Kubernetes Ingress resource routes ALB traffic to the gateway pods via IP-mode target groups.
 
 ## What is implemented
 
@@ -132,7 +143,44 @@ Repeat for:
 - `aws/kubernetes/live/eu-west-1/stage/karpenter`
 - `aws/kubernetes/live/eu-west-1/prod/karpenter`
 
-6. Run full stack plan across an environment:
+6. Plan/apply AWS Load Balancer Controller per environment (requires cluster + networking to be applied first):
+
+```bash
+cd aws/kubernetes/live/eu-west-1/dev/aws-lb-controller
+terragrunt init
+terragrunt plan
+terragrunt apply
+```
+
+Repeat for:
+
+- `aws/kubernetes/live/eu-west-1/stage/aws-lb-controller`
+- `aws/kubernetes/live/eu-west-1/prod/aws-lb-controller`
+
+7. Plan/apply Istio per environment (requires cluster + aws-lb-controller to be applied first):
+
+```bash
+cd aws/kubernetes/live/eu-west-1/dev/istio
+terragrunt init
+terragrunt plan
+terragrunt apply
+```
+
+Repeat for:
+
+- `aws/kubernetes/live/eu-west-1/stage/istio`
+- `aws/kubernetes/live/eu-west-1/prod/istio`
+
+8. Plan/apply test application (dev only, requires istio to be applied first):
+
+```bash
+cd aws/kubernetes/live/eu-west-1/dev/test-app
+terragrunt init
+terragrunt plan
+terragrunt apply
+```
+
+9. Run full stack plan across an environment:
 
 ```bash
 cd aws/kubernetes/live/eu-west-1/dev
@@ -168,6 +216,21 @@ terragrunt run-all plan
 
 These outputs are consumed by later phases (add-ons, observability).
 
+## Key outputs (aws-lb-controller)
+
+- `lb_controller_role_arn`
+- `lb_controller_role_name`
+- `lb_controller_chart_version`
+- `lb_controller_namespace`
+
+## Key outputs (istio)
+
+- `istiod_version`
+- `istio_namespace`
+- `ingress_gateway_namespace`
+- `egress_gateway_namespace`
+- `alb_ingress_name`
+
 ## Design tradeoffs
 
 ### Single NAT Gateway
@@ -189,6 +252,83 @@ The `general-spot` NodePool has a higher weight (100) than `general-ondemand` (5
 ### Karpenter consolidation
 
 Consolidation is set to `WhenEmptyOrUnderutilized` -- Karpenter will terminate and replace nodes to reduce costs. Prod uses a 5-minute cooldown (`consolidate_after = "5m"`) to avoid churn during transient load changes.
+
+### ALB vs NLB for Istio Ingress
+
+The Istio Ingress Gateway uses an ALB (Application Load Balancer, Layer 7) instead of an NLB (Network Load Balancer, Layer 4). This gives us:
+
+- **ACM-managed TLS certificates** with automatic renewal at the ALB
+- **AWS WAF integration** for web application firewall protection
+- **HTTP/2 and gRPC** native support
+- **Path/host-based routing** at the ALB level (in addition to Istio VirtualService routing)
+
+Trade-off: TLS terminates at the ALB. The connection from ALB to Istio Gateway pods is a new HTTP connection. If end-to-end mTLS from client to pod is required, switch to NLB with TCP pass-through.
+
+### Istio Gateway Service type
+
+The Istio Ingress Gateway runs as `ClusterIP` (not `LoadBalancer`). The ALB routes to gateway pods via IP-mode target groups. This avoids double load balancing (ALB -> NLB) and reduces cost.
+
+## Key outputs (test-app)
+
+- `namespace`
+- `frontend_service`
+- `backend_service`
+
+## Validation (Test App)
+
+After applying the test-app stack, verify all components:
+
+```bash
+# Pods should show 2/2 READY (app container + Istio sidecar)
+kubectl get pods -n test-app
+
+# Istio resources
+kubectl get gateway,virtualservice,destinationrule,peerauthentication,authorizationpolicy,serviceentry -n test-app
+
+# Get the ALB DNS name
+ALB_DNS=$(kubectl get ingress -n istio-ingress istio-ingress-alb -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+
+# Test frontend (should return nginx welcome page)
+curl -s http://$ALB_DNS/
+
+# Test backend via /api route (should return "hello from backend")
+curl -s http://$ALB_DNS/api
+
+# Verify mTLS is active (STRICT)
+istioctl x describe pod $(kubectl get pod -n test-app -l app=backend -o jsonpath='{.items[0].metadata.name}') -n test-app
+
+# Verify Envoy access logs
+kubectl logs -n test-app -l app=frontend -c istio-proxy --tail=10
+
+# Verify Karpenter provisioned nodes for workload pods (no CriticalAddonsOnly taint)
+kubectl get nodes -l karpenter.sh/nodepool
+```
+
+## Validation (AWS Load Balancer Controller)
+
+After applying the aws-lb-controller stack, verify it's running:
+
+```bash
+kubectl get deployment -n kube-system aws-load-balancer-controller
+kubectl logs -n kube-system -l app.kubernetes.io/name=aws-load-balancer-controller --tail=20
+```
+
+## Validation (Istio + ALB)
+
+After applying the Istio stack, verify the ALB Ingress is provisioned:
+
+```bash
+kubectl get ingress -n istio-ingress istio-ingress-alb
+kubectl describe ingress -n istio-ingress istio-ingress-alb
+```
+
+The `ADDRESS` field should show the ALB DNS name. Verify the ALB is healthy:
+
+```bash
+aws elbv2 describe-load-balancers --query "LoadBalancers[?contains(LoadBalancerName,'istio')]"
+```
+
+To enable HTTPS, set `alb_certificate_arn` to an ACM certificate ARN in the Istio stack inputs. To attach AWS WAF, set `alb_waf_acl_arn`.
 
 ## Validation (Karpenter)
 

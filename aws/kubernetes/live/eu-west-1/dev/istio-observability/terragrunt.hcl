@@ -13,32 +13,21 @@ dependency "cluster" {
     cluster_name                       = "mock-eks"
     cluster_endpoint                   = "https://mock"
     cluster_certificate_authority_data = "bW9jaw=="
-    cluster_security_group_id          = "sg-mock-additional"
-    cluster_primary_security_group_id  = "sg-mock"
   }
   mock_outputs_allowed_terraform_commands = ["validate", "plan"]
 }
 
-dependency "networking" {
-  config_path = "../networking"
+dependency "istio" {
+  config_path = "../istio"
 
   mock_outputs = {
-    vpc_cidr_block = "10.0.0.0/16"
-  }
-  mock_outputs_allowed_terraform_commands = ["validate", "plan"]
-}
-
-dependency "aws_lb_controller" {
-  config_path = "../aws-lb-controller"
-
-  mock_outputs = {
-    lb_controller_chart_version = "1.12.0"
+    istio_namespace = "istio-system"
   }
   mock_outputs_allowed_terraform_commands = ["validate", "plan"]
 }
 
 terraform {
-  source = "../../../../modules/istio"
+  source = "../../../../modules/istio-observability"
 }
 
 generate "k8s_providers" {
@@ -70,19 +59,12 @@ generate "k8s_providers" {
 }
 
 inputs = {
-  cluster_name                      = dependency.cluster.outputs.cluster_name
-  environment                       = local.env_cfg.locals.environment
-  cluster_security_group_id         = dependency.cluster.outputs.cluster_security_group_id
-  cluster_primary_security_group_id = dependency.cluster.outputs.cluster_primary_security_group_id
-  vpc_cidr                          = dependency.networking.outputs.vpc_cidr_block
+  namespace = dependency.istio.outputs.istio_namespace
 
-  istio_version             = "1.26.0"
-  enable_ingress_gateway    = true
-  ingress_gateway_lb_scheme = "internet-facing"
-  enable_egress_gateway     = true
-  mtls_mode                 = "STRICT"
-  enable_access_log         = true
+  prometheus_version         = "27.5.0"
+  prometheus_retention       = "6h"
+  prometheus_storage_enabled = false
 
-  # ALB — leave certificate_arn empty for HTTP-only in dev
-  alb_certificate_arn = ""
+  kiali_version       = "2.7.0"
+  kiali_auth_strategy = "anonymous"
 }

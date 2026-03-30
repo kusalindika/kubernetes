@@ -31,7 +31,7 @@ variable "enable_ingress_gateway" {
 }
 
 variable "ingress_gateway_lb_scheme" {
-  description = "Load balancer scheme for the ingress gateway (internet-facing or internal)."
+  description = "ALB scheme for the ingress gateway (internet-facing or internal)."
   type        = string
   default     = "internet-facing"
 
@@ -78,4 +78,35 @@ variable "istiod_resources" {
     limits_cpu      = "500m"
     limits_memory   = "512Mi"
   }
+}
+
+variable "vpc_cidr" {
+  description = "VPC CIDR block. Used to allow ALB health checks and traffic to reach Istio gateway pods."
+  type        = string
+}
+
+# ---------- ALB configuration ----------
+
+variable "alb_certificate_arn" {
+  description = "ACM certificate ARN for HTTPS on the ALB. Leave empty to use HTTP only."
+  type        = string
+  default     = ""
+}
+
+variable "alb_ssl_policy" {
+  description = "SSL negotiation policy for the ALB HTTPS listener."
+  type        = string
+  default     = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+}
+
+variable "alb_waf_acl_arn" {
+  description = "WAFv2 Web ACL ARN to associate with the ALB. Leave empty to skip."
+  type        = string
+  default     = ""
+}
+
+variable "alb_extra_annotations" {
+  description = "Additional annotations to merge into the ALB Ingress resource."
+  type        = map(string)
+  default     = {}
 }

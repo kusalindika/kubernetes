@@ -26,6 +26,36 @@ resource "aws_security_group_rule" "istio_xds" {
   security_group_id        = var.cluster_security_group_id
 }
 
+# ---------- Security group rules for ALB -> Istio Gateway pods ----------
+# The ALB (in public subnets) sends traffic directly to pod IPs (in private
+# subnets) because target-type is "ip". The EKS primary security group must
+# allow inbound from the VPC CIDR on the gateway's data port and health check
+# port, otherwise health checks time out.
+
+resource "aws_security_group_rule" "alb_to_gateway_traffic" {
+  count = var.enable_ingress_gateway ? 1 : 0
+
+  description       = "ALB to Istio gateway traffic (port 80)"
+  type              = "ingress"
+  from_port         = 80
+  to_port           = 80
+  protocol          = "tcp"
+  cidr_blocks       = [var.vpc_cidr]
+  security_group_id = var.cluster_primary_security_group_id
+}
+
+resource "aws_security_group_rule" "alb_to_gateway_healthcheck" {
+  count = var.enable_ingress_gateway ? 1 : 0
+
+  description       = "ALB health check to Istio gateway (port 15021)"
+  type              = "ingress"
+  from_port         = 15021
+  to_port           = 15021
+  protocol          = "tcp"
+  cidr_blocks       = [var.vpc_cidr]
+  security_group_id = var.cluster_primary_security_group_id
+}
+
 # ---------- Istio Base (CRDs) ----------
 
 resource "helm_release" "istio_base" {
@@ -58,12 +88,20 @@ resource "helm_release" "istiod" {
   values = [
     yamlencode({
       meshConfig = {
-        accessLogFile = var.enable_access_log ? "/dev/stdout" : ""
-        enableAutoMtls = var.mtls_mode != "DISABLE"
+        accessLogFile         = var.enable_access_log ? "/dev/stdout" : ""
+        enableAutoMtls        = var.mtls_mode != "DISABLE"
+        enablePrometheusMerge = true
         defaultConfig = {
           holdApplicationUntilProxyStarts = true
           gatewayTopology = {
             numTrustedProxies = 1
+          }
+          proxyStatsMatcher = {
+            inclusionRegexps = [
+              ".*circuit_breakers.*",
+              ".*upstream_rq_retry.*",
+              ".*upstream_cx_.*",
+            ]
           }
         }
       }
@@ -99,7 +137,7 @@ resource "helm_release" "istiod" {
   depends_on = [helm_release.istio_base]
 }
 
-# ---------- Istio Ingress Gateway ----------
+# ---------- Istio Ingress Gateway (ClusterIP — fronted by ALB) ----------
 
 resource "helm_release" "istio_ingress" {
   count = var.enable_ingress_gateway ? 1 : 0
@@ -119,17 +157,72 @@ resource "helm_release" "istio_ingress" {
         istio = "ingressgateway"
       }
       service = {
-        annotations = {
-          "service.beta.kubernetes.io/aws-load-balancer-type"            = "external"
-          "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type" = "ip"
-          "service.beta.kubernetes.io/aws-load-balancer-scheme"          = var.ingress_gateway_lb_scheme
-          "service.beta.kubernetes.io/aws-load-balancer-attributes"      = "load_balancing.cross_zone.enabled=true"
-        }
+        type = "ClusterIP"
       }
     })
   ]
 
   depends_on = [helm_release.istiod]
+}
+
+# ---------- ALB Ingress for Istio Gateway ----------
+# The AWS Load Balancer Controller watches this Ingress resource
+# and provisions an Application Load Balancer that routes to
+# the Istio Ingress Gateway pods via IP-mode target groups.
+
+resource "kubernetes_ingress_v1" "istio_alb" {
+  count = var.enable_ingress_gateway ? 1 : 0
+
+  metadata {
+    name      = "istio-ingress-alb"
+    namespace = helm_release.istio_ingress[0].namespace
+
+    annotations = merge(
+      {
+        "alb.ingress.kubernetes.io/scheme"           = var.ingress_gateway_lb_scheme
+        "alb.ingress.kubernetes.io/target-type"      = "ip"
+        "alb.ingress.kubernetes.io/backend-protocol" = "HTTP"
+        "alb.ingress.kubernetes.io/healthcheck-path" = "/healthz/ready"
+        "alb.ingress.kubernetes.io/healthcheck-port" = "15021"
+      },
+      var.alb_certificate_arn != "" ? {
+        "alb.ingress.kubernetes.io/listen-ports"    = "[{\"HTTP\":80},{\"HTTPS\":443}]"
+        "alb.ingress.kubernetes.io/ssl-redirect"    = "443"
+        "alb.ingress.kubernetes.io/certificate-arn" = var.alb_certificate_arn
+        "alb.ingress.kubernetes.io/ssl-policy"      = var.alb_ssl_policy
+        } : {
+        "alb.ingress.kubernetes.io/listen-ports" = "[{\"HTTP\":80}]"
+      },
+      var.alb_waf_acl_arn != "" ? {
+        "alb.ingress.kubernetes.io/wafv2-acl-arn" = var.alb_waf_acl_arn
+      } : {},
+      var.alb_extra_annotations,
+    )
+  }
+
+  spec {
+    ingress_class_name = "alb"
+
+    rule {
+      http {
+        path {
+          path      = "/"
+          path_type = "Prefix"
+
+          backend {
+            service {
+              name = "istio-ingress"
+              port {
+                number = 80
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  depends_on = [helm_release.istio_ingress]
 }
 
 # ---------- Istio Egress Gateway ----------

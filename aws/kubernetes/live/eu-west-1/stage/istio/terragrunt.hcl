@@ -19,6 +19,24 @@ dependency "cluster" {
   mock_outputs_allowed_terraform_commands = ["validate", "plan"]
 }
 
+dependency "networking" {
+  config_path = "../networking"
+
+  mock_outputs = {
+    vpc_cidr_block = "10.0.0.0/16"
+  }
+  mock_outputs_allowed_terraform_commands = ["validate", "plan"]
+}
+
+dependency "aws_lb_controller" {
+  config_path = "../aws-lb-controller"
+
+  mock_outputs = {
+    lb_controller_chart_version = "1.12.0"
+  }
+  mock_outputs_allowed_terraform_commands = ["validate", "plan"]
+}
+
 terraform {
   source = "../../../../modules/istio"
 }
@@ -38,6 +56,16 @@ generate "k8s_providers" {
         }
       }
     }
+
+    provider "kubernetes" {
+      host                   = "${dependency.cluster.outputs.cluster_endpoint}"
+      cluster_ca_certificate = base64decode("${dependency.cluster.outputs.cluster_certificate_authority_data}")
+      exec {
+        api_version = "client.authentication.k8s.io/v1beta1"
+        command     = "aws"
+        args        = ["eks", "get-token", "--cluster-name", "${dependency.cluster.outputs.cluster_name}", "--region", "eu-west-1"]
+      }
+    }
   EOF
 }
 
@@ -46,6 +74,7 @@ inputs = {
   environment                       = local.env_cfg.locals.environment
   cluster_security_group_id         = dependency.cluster.outputs.cluster_security_group_id
   cluster_primary_security_group_id = dependency.cluster.outputs.cluster_primary_security_group_id
+  vpc_cidr                          = dependency.networking.outputs.vpc_cidr_block
 
   istio_version             = "1.26.0"
   enable_ingress_gateway    = true
@@ -53,4 +82,7 @@ inputs = {
   enable_egress_gateway     = true
   mtls_mode                 = "STRICT"
   enable_access_log         = true
+
+  # ALB — provide ACM certificate ARN for HTTPS
+  alb_certificate_arn = ""
 }
