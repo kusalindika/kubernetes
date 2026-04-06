@@ -18,16 +18,12 @@ dependency "cluster" {
 }
 
 dependency "istio" {
-  config_path = "../istio"
-
-  mock_outputs = {
-    istio_namespace = "istio-system"
-  }
-  mock_outputs_allowed_terraform_commands = ["validate", "plan"]
+  config_path  = "../istio"
+  skip_outputs = true
 }
 
 terraform {
-  source = "../../../../modules/istio-observability"
+  source = "../../../../modules/argocd"
 }
 
 generate "k8s_providers" {
@@ -46,9 +42,10 @@ generate "k8s_providers" {
       }
     }
 
-    provider "kubernetes" {
+    provider "kubectl" {
       host                   = "${dependency.cluster.outputs.cluster_endpoint}"
       cluster_ca_certificate = base64decode("${dependency.cluster.outputs.cluster_certificate_authority_data}")
+      load_config_file       = false
       exec {
         api_version = "client.authentication.k8s.io/v1beta1"
         command     = "aws"
@@ -59,12 +56,20 @@ generate "k8s_providers" {
 }
 
 inputs = {
-  namespace = dependency.istio.outputs.istio_namespace
+  cluster_name         = dependency.cluster.outputs.cluster_name
+  environment          = local.env_cfg.locals.environment
+  argocd_namespace     = "argocd"
+  argocd_chart_version = "7.7.16"
 
-  prometheus_version         = "28.15.0"
-  prometheus_retention       = "6h"
-  prometheus_storage_enabled = false
+  create_test_app_application = true
+  test_app_application_name   = "test-app"
+  test_app_namespace          = "test-app"
+  test_app_repo_url           = "https://github.com/kusalindika/kubernetes.git"
+  test_app_target_revision    = "main"
+  test_app_path               = "aws/kubernetes/apps/test-app"
+  enable_istio_sidecar_injection = true
 
-  kiali_version       = "2.24.0"
-  kiali_auth_strategy = "anonymous"
+  enable_istio_ingress = true
+  argocd_hostname      = "*"
+  argocd_base_path     = "/argocd"
 }

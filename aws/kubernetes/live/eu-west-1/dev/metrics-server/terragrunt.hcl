@@ -17,17 +17,8 @@ dependency "cluster" {
   mock_outputs_allowed_terraform_commands = ["validate", "plan"]
 }
 
-dependency "istio" {
-  config_path = "../istio"
-
-  mock_outputs = {
-    istio_namespace = "istio-system"
-  }
-  mock_outputs_allowed_terraform_commands = ["validate", "plan"]
-}
-
 terraform {
-  source = "../../../../modules/istio-observability"
+  source = "../../../../modules/metrics-server"
 }
 
 generate "k8s_providers" {
@@ -45,26 +36,12 @@ generate "k8s_providers" {
         }
       }
     }
-
-    provider "kubernetes" {
-      host                   = "${dependency.cluster.outputs.cluster_endpoint}"
-      cluster_ca_certificate = base64decode("${dependency.cluster.outputs.cluster_certificate_authority_data}")
-      exec {
-        api_version = "client.authentication.k8s.io/v1beta1"
-        command     = "aws"
-        args        = ["eks", "get-token", "--cluster-name", "${dependency.cluster.outputs.cluster_name}", "--region", "eu-west-1"]
-      }
-    }
   EOF
 }
 
 inputs = {
-  namespace = dependency.istio.outputs.istio_namespace
-
-  prometheus_version         = "28.15.0"
-  prometheus_retention       = "6h"
-  prometheus_storage_enabled = false
-
-  kiali_version       = "2.24.0"
-  kiali_auth_strategy = "anonymous"
+  cluster_name                 = dependency.cluster.outputs.cluster_name
+  environment                  = local.env_cfg.locals.environment
+  metrics_server_chart_version = "3.13.0"
+  metrics_server_replicas      = 1
 }
