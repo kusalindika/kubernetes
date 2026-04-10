@@ -67,7 +67,7 @@ inputs = {
   test_app_repo_url           = "https://github.com/kusalindika/kubernetes.git"
   test_app_target_revision    = "main"
   test_app_path               = "aws/kubernetes/apps/test-app"
-  enable_istio_sidecar_injection = true
+  enable_istio_sidecar_injection = false
 
   enable_istio_ingress = true
   argocd_hostname      = "*"

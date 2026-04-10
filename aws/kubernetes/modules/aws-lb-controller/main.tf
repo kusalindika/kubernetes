@@ -173,6 +173,24 @@ data "aws_iam_policy_document" "lb_controller" {
     }
   }
 
+  # Some controllers (or pre-existing SGs) are tagged using the standard EKS cluster tag
+  # rather than the elbv2.k8s.aws/cluster tag. Allow SG rule changes when that tag is present.
+  statement {
+    sid    = "EC2SecurityGroupWriteEksClusterTag"
+    effect = "Allow"
+    actions = [
+      "ec2:AuthorizeSecurityGroupIngress",
+      "ec2:RevokeSecurityGroupIngress",
+    ]
+    resources = ["*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:ResourceTag/kubernetes.io/cluster/${var.cluster_name}"
+      values   = ["owned", "shared"]
+    }
+  }
+
   statement {
     sid    = "EC2SecurityGroupCreate"
     effect = "Allow"

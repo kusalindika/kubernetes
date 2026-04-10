@@ -76,5 +76,5 @@ variable "argocd_base_path" {
 variable "enable_istio_sidecar_injection" {
   description = "Whether to label the Argo CD namespace for Istio sidecar injection."
   type        = bool
-  default     = true
+  default     = false
 }

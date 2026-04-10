@@ -53,7 +53,7 @@ resource "helm_release" "prometheus" {
         "prometheus.yml" = {
           scrape_configs = [
             {
-              job_name     = "kubernetes-pods"
+              job_name     = "kubernetes-pods-istio"
               metrics_path = "/stats/prometheus"
               kubernetes_sd_configs = [{
                 role = "pod"
