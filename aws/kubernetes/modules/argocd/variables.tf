@@ -55,6 +55,30 @@ variable "test_app_path" {
   default     = "aws/kubernetes/apps/test-app"
 }
 
+variable "test_app_hostname" {
+  description = "Hostname used by the test-app Istio VirtualService."
+  type        = string
+  default     = "*"
+}
+
+variable "test_app_create_gateway" {
+  description = "Whether the test-app Helm chart should create its own Istio Gateway."
+  type        = bool
+  default     = true
+}
+
+variable "test_app_gateway_name" {
+  description = "Name of the Istio Gateway used by test-app."
+  type        = string
+  default     = "test-app-gateway"
+}
+
+variable "test_app_gateway_namespace" {
+  description = "Namespace where the test-app Istio Gateway lives."
+  type        = string
+  default     = ""
+}
+
 variable "enable_istio_ingress" {
   description = "Whether to expose Argo CD through an Istio Gateway and VirtualService."
   type        = bool

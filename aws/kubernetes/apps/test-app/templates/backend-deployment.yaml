@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "test-app.backendFullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+{{ include "test-app.backendLabels" . | indent 4 }}
+spec:
+  replicas: {{ .Values.backend.replicas }}
+  selector:
+    matchLabels:
+{{ include "test-app.backendSelectorLabels" . | indent 6 }}
+  template:
+    metadata:
+      labels:
+{{ include "test-app.backendSelectorLabels" . | indent 8 }}
+    spec:
+      containers:
+        - name: backend
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          args:
+            - -text={{ .Values.backend.message }}
+            - -listen=:{{ .Values.backend.containerPort }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.backend.containerPort }}
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.backend.containerPort }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.backend.containerPort }}
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+{{ toYaml .Values.backend.resources | indent 12 }}

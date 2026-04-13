@@ -68,29 +68,60 @@ resource "helm_release" "argocd" {
 }
 
 resource "kubectl_manifest" "test_app_application" {
-  count     = var.create_test_app_application ? 1 : 0
-  yaml_body = <<-YAML
-    apiVersion: argoproj.io/v1alpha1
-    kind: Application
-    metadata:
-      name: ${var.test_app_application_name}
-      namespace: ${var.argocd_namespace}
-    spec:
-      project: default
-      source:
-        repoURL: ${var.test_app_repo_url}
-        targetRevision: ${var.test_app_target_revision}
-        path: ${var.test_app_path}
-      destination:
-        server: https://kubernetes.default.svc
-        namespace: ${var.test_app_namespace}
-      syncPolicy:
-        automated:
-          prune: true
-          selfHeal: true
-        syncOptions:
-          - CreateNamespace=true
-  YAML
+  count = var.create_test_app_application ? 1 : 0
+  yaml_body = yamlencode({
+    apiVersion = "argoproj.io/v1alpha1"
+    kind       = "Application"
+    metadata = {
+      name      = var.test_app_application_name
+      namespace = var.argocd_namespace
+    }
+    spec = {
+      project = "default"
+      source = {
+        repoURL        = var.test_app_repo_url
+        targetRevision = var.test_app_target_revision
+        path           = var.test_app_path
+        helm = {
+          valuesObject = {
+            istio = {
+              enabled = true
+              gateway = {
+                create    = var.test_app_create_gateway
+                name      = var.test_app_gateway_name
+                namespace = var.test_app_gateway_namespace
+                servers = [{
+                  port = {
+                    number   = 80
+                    name     = "http"
+                    protocol = "HTTP"
+                  }
+                  hosts = [var.test_app_hostname]
+                }]
+              }
+              virtualService = {
+                hosts = [var.test_app_hostname]
+                gateways = var.test_app_create_gateway ? [] : compact([
+                  trimspace(var.test_app_gateway_namespace) != "" ? "${var.test_app_gateway_namespace}/${var.test_app_gateway_name}" : var.test_app_gateway_name
+                ])
+              }
+            }
+          }
+        }
+      }
+      destination = {
+        server    = "https://kubernetes.default.svc"
+        namespace = var.test_app_namespace
+      }
+      syncPolicy = {
+        automated = {
+          prune    = true
+          selfHeal = true
+        }
+        syncOptions = ["CreateNamespace=true"]
+      }
+    }
+  })
 
   depends_on = [helm_release.argocd]
 }

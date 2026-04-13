@@ -1,0 +1,83 @@
+frontend:
+  replicas: 2
+  image:
+    repository: nginx
+    tag: 1.27-alpine
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: http
+  resources:
+    requests:
+      cpu: 50m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
+
+backend:
+  replicas: 2
+  image:
+    repository: hashicorp/http-echo
+    tag: 0.2.3
+    pullPolicy: IfNotPresent
+  message: hello from backend
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: http
+  containerPort: 8080
+  resources:
+    requests:
+      cpu: 50m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
+
+namespace:
+  create: true
+  labels:
+    istio-injection: "enabled"
+
+istio:
+  enabled: true
+  gateway:
+    create: true
+    name: test-app-gateway
+    namespace: ""
+    selector:
+      istio: ingressgateway
+    servers:
+      - port:
+          number: 80
+          name: http
+          protocol: HTTP
+        hosts:
+          - "*"
+  virtualService:
+    name: test-app
+    hosts:
+      - "*"
+    gateways: []
+    backendPathPrefix: /api
+    backendRewrite: /
+    backendTimeout: 10s
+    backendRetries:
+      attempts: 3
+      perTryTimeout: 3s
+      retryOn: 5xx,reset,connect-failure
+
+destinationRule:
+  enabled: false
+  frontend:
+    name: frontend
+    trafficPolicy: {}
+  backend:
+    name: backend
+    trafficPolicy: {}
+
+peerAuthentication:
+  enabled: false
+  mtlsMode: STRICT

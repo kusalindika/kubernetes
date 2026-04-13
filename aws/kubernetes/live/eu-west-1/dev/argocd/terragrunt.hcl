@@ -61,12 +61,16 @@ inputs = {
   argocd_namespace     = "argocd"
   argocd_chart_version = "7.7.16"
 
-  create_test_app_application = true
-  test_app_application_name   = "test-app"
-  test_app_namespace          = "test-app"
-  test_app_repo_url           = "https://github.com/kusalindika/kubernetes.git"
-  test_app_target_revision    = "main"
-  test_app_path               = "aws/kubernetes/apps/test-app"
+  create_test_app_application    = true
+  test_app_application_name      = "test-app"
+  test_app_namespace             = "test-app"
+  test_app_repo_url              = "https://github.com/kusalindika/kubernetes.git"
+  test_app_target_revision       = "main"
+  test_app_path                  = "aws/kubernetes/apps/test-app"
+  test_app_hostname              = "*"
+  test_app_create_gateway        = true
+  test_app_gateway_name          = "test-app-gateway"
+  test_app_gateway_namespace     = ""
   enable_istio_sidecar_injection = false
 
   enable_istio_ingress = true

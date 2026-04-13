@@ -1,0 +1,6 @@
+apiVersion: v2
+name: test-app
+description: Helm chart for deploying the test app with optional Istio exposure.
+type: application
+version: 0.1.0
+appVersion: "1.27.0"

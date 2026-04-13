@@ -1,0 +1,43 @@
+{{- if .Values.istio.enabled }}
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: {{ .Values.istio.virtualService.name }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  hosts:
+{{ toYaml .Values.istio.virtualService.hosts | indent 4 }}
+{{- if or .Values.istio.virtualService.gateways .Values.istio.gateway.create }}
+  gateways:
+{{- if .Values.istio.virtualService.gateways }}
+{{ toYaml .Values.istio.virtualService.gateways | indent 4 }}
+{{- else }}
+    - {{ include "test-app.createdGatewayRef" . }}
+{{- end }}
+{{- end }}
+  http:
+    - name: backend-api
+      match:
+        - uri:
+            prefix: {{ .Values.istio.virtualService.backendPathPrefix | quote }}
+{{- if .Values.istio.virtualService.backendRewrite }}
+      rewrite:
+        uri: {{ .Values.istio.virtualService.backendRewrite | quote }}
+{{- end }}
+      route:
+        - destination:
+            host: {{ include "test-app.backendFullname" . }}.{{ .Release.Namespace }}.svc.cluster.local
+            port:
+              number: {{ .Values.backend.service.port }}
+      timeout: {{ .Values.istio.virtualService.backendTimeout | quote }}
+      retries:
+        attempts: {{ .Values.istio.virtualService.backendRetries.attempts }}
+        perTryTimeout: {{ .Values.istio.virtualService.backendRetries.perTryTimeout | quote }}
+        retryOn: {{ .Values.istio.virtualService.backendRetries.retryOn | quote }}
+    - name: frontend-default
+      route:
+        - destination:
+            host: {{ include "test-app.frontendFullname" . }}.{{ .Release.Namespace }}.svc.cluster.local
+            port:
+              number: {{ .Values.frontend.service.port }}
+{{- end }}

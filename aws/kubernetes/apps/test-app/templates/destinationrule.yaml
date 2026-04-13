@@ -1,0 +1,25 @@
+{{- if and .Values.istio.enabled .Values.destinationRule.enabled }}
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: {{ .Values.destinationRule.backend.name }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: {{ printf "%s.%s.svc.cluster.local" (include "test-app.backendFullname" .) .Release.Namespace }}
+{{- with .Values.destinationRule.backend.trafficPolicy }}
+  trafficPolicy:
+{{ toYaml . | indent 4 }}
+{{- end }}
+---
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: {{ .Values.destinationRule.frontend.name }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: {{ printf "%s.%s.svc.cluster.local" (include "test-app.frontendFullname" .) .Release.Namespace }}
+{{- with .Values.destinationRule.frontend.trafficPolicy }}
+  trafficPolicy:
+{{ toYaml . | indent 4 }}
+{{- end }}
+{{- end }}
