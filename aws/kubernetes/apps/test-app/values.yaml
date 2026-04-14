@@ -9,7 +9,7 @@ frontend:
     port: 80
     targetPort: http
   autoscaling:
-    enabled: false
+    enabled: true
     minReplicas: 2
     maxReplicas: 5
     targetCPUUtilizationPercentage: 70
@@ -36,7 +36,7 @@ backend:
     targetPort: http
   containerPort: 8080
   autoscaling:
-    enabled: false
+    enabled: true
     minReplicas: 2
     maxReplicas: 5
     targetCPUUtilizationPercentage: 70
