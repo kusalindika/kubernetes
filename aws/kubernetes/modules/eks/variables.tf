@@ -71,3 +71,27 @@ variable "system_node_max" {
   type        = number
   default     = 3
 }
+
+variable "vpc_cni_addon_version" {
+  description = "Optional explicit version for the vpc-cni EKS add-on. When null, the most recent compatible version for cluster_version is used."
+  type        = string
+  default     = null
+}
+
+variable "coredns_addon_version" {
+  description = "Optional explicit version for the coredns EKS add-on. When null, the most recent compatible version for cluster_version is used."
+  type        = string
+  default     = null
+}
+
+variable "kube_proxy_addon_version" {
+  description = "Optional explicit version for the kube-proxy EKS add-on. When null, the most recent compatible version for cluster_version is used."
+  type        = string
+  default     = null
+}
+
+variable "ebs_csi_addon_version" {
+  description = "Optional explicit version for the aws-ebs-csi-driver EKS add-on. When null, the most recent compatible version for cluster_version is used."
+  type        = string
+  default     = null
+}
