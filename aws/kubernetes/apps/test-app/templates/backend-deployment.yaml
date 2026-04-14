@@ -6,7 +6,9 @@ metadata:
   labels:
 {{ include "test-app.backendLabels" . | indent 4 }}
 spec:
+{{- if not .Values.backend.autoscaling.enabled }}
   replicas: {{ .Values.backend.replicas }}
+{{- end }}
   selector:
     matchLabels:
 {{ include "test-app.backendSelectorLabels" . | indent 6 }}
