@@ -40,12 +40,12 @@ resource "helm_release" "prometheus" {
         }]
         resources = {
           requests = {
-            cpu    = "250m"
-            memory = "256Mi"
+            cpu    = "300m"
+            memory = "512Mi"
           }
           limits = {
-            cpu    = "500m"
-            memory = "512Mi"
+            cpu    = "600m"
+            memory = "1024Mi"
           }
         }
       }
