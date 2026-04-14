@@ -113,6 +113,15 @@ resource "kubectl_manifest" "test_app_application" {
         server    = "https://kubernetes.default.svc"
         namespace = var.test_app_namespace
       }
+      ignoreDifferences = [
+        {
+          group = "apps"
+          kind  = "Deployment"
+          jsonPointers = [
+            "/spec/replicas"
+          ]
+        }
+      ]
       syncPolicy = {
         automated = {
           prune    = true
