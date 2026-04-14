@@ -12,7 +12,7 @@ frontend:
     enabled: true
     minReplicas: 2
     maxReplicas: 5
-    targetCPUUtilizationPercentage: 70
+    targetCPUUtilizationPercentage: 50
     targetMemoryUtilizationPercentage: null
     # behavior: {}
   resources:
